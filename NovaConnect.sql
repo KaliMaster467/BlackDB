@@ -69,6 +69,7 @@ create table Monitor(
 
 create table Modifications(
 	ModID int not null primary key,
+    ModMonitor boolean not null,
     ModUserID int not null,
     ModDate date not null,
     ModLastTelephone int (12) not null,
@@ -106,26 +107,6 @@ create table ProductUse(
     ProductUseEndDate date not null,
     FOREIGN KEY (ProductUseProductID) REFERENCES Products(ProductID)
 );
-select * from Users;
-select * from Products;
-select * from ProductsSale;
-select * from Alerts;
-select * from Administradores;
-select * from Monitor;
-select * from Monitoring;
-select * from Modifications;
-select * from BlockedUsers;
-select * from ProductUse;
-delete from Users where UserID is null;
-delete from Products where ProductID is null;
-delete from ProductsSale where ProductsSale is null;
-delete from Alerts where Alerts is null;
-delete from Administradores where Administradores is null;
-delete from Monitor where Monitor is null;
-delete from Monitoring where Monitoring is null;
-delete from Modifications where Users is null;
-delete from BlockedUsers where Users is null;
-delete from ProductUse where Users is null;
 
 drop procedure if exists sp_registerUser;
 delimiter //
@@ -150,8 +131,6 @@ begin
 end//
 delimiter ;
 
-call sp_registerUser('Ochoa', 'Rodriguez', 'Daniel Salvador', '55396021', 'keimzely@gmail.com', 'Miguel Hidalgo', 'quequitas', 'aleluya123avenidaFeik');
-
 drop procedure if exists sp_checkUser;
 delimiter //
 create procedure sp_checkUser(in email nvarchar(64))
@@ -169,8 +148,6 @@ begin
 	select msg as sstatus;
 end//
 delimiter ;
-
-call sp_checkUser('keimzely@gmail.com');
 
 drop procedure if exists sp_registerProduct;
 delimiter //
@@ -194,8 +171,6 @@ begin
 end//
 delimiter ;
 
-call sp_registerProduct('Pulse-Sync', 1500, 20, 'La mejor pulsera del mundo lml');
-
 drop procedure if exists sp_checkProducts;
 delimiter //
 create procedure sp_checkProducts(in idP int)
@@ -213,26 +188,167 @@ begin
 end//
 delimiter ;
 
-call sp_checkProducts(1);
-
 drop procedure if exists sp_productSale;
 delimiter //
-create procedure sp_productSale(in userEmail nvarchar(64), in productName nvarchar(32), in payMethod int(2), in comments nvarchar(200))
+create procedure sp_productSale(in id int, in prodId int, in payMethod int(2), in comments nvarchar(200))
 begin
 	declare actID int;
 	declare actDate date;
-    declare userID int;
-    declare prodID int;
 	declare msg nvarchar(64);
     set actID = (select count(*) from ProductsSale)+1;
     set actDate = curDate();
-    set userID = (select UserID from Users where UserEmail = userEmail);
-    set prodID = (select ProductID from Products where ProductName = productName);
     insert into ProductsSale(SaleID, SaleUserID, SaleProductID, SaleDate, SalePayMethod, SaleComments) 
-    values (actID, userID, prodID, actDate, payMethod, comments);
+    values (id, prodId, prodID, actDate, payMethod, comments);
     set msg = 'Gotcha';
     select msg as sstatus;
 end//
 delimiter ;
-call sp_productSale('keimzely@gmail.com', 'Pulse-Sync', 2, 'la mejor pulsera pariente');
+drop procedure if exists sp_checkSale;
+delimiter //
+create procedure sp_checkSale(in usId int, in prodId int)
+begin
+	declare exist int;
+    declare msg nvarchar(60);
+    set exist = (select count(*) from ProductsSale where SaleUserID = usId and SaleProductID = prodId);
+    if(exist = 0) then
+		set msg = 'compra inexistente';
+    else
+		select Products.ProductName as nombreProducto, Products.ProductPrice as precio, Products.ProductDescription as descripcion, ProductsSale.SaleDate as fechaDeCompra, ProductsSale.SalePayMethod as formaDePago, ProductsSale.SaleComments as comentarios from ProductsSale inner join Products on ProductsSale.SaleProductID = Products.ProductID;
+        set msg = 'compra encontrada';
+    end if;
+    select msg as sstatus;
+    
+end//
+delimiter ;
 
+drop procedure if exists sp_fireAlert;
+delimiter //
+create procedure sp_fireAlert(in usID int, in loc nvarchar(160), in attended boolean, in realAlert boolean, in comments nvarchar(200))
+begin
+	declare alertID int;
+    declare actDate date;
+    declare msg nvarchar(60);
+    set alertID = (select count(*) from Alerts)+1;
+    set actDate = curdate();
+    insert into Alerts(AlertID, AlertUserID, AlertDate, AlertLocation, AlertAttended, AlertReal, AlertComments) values (alertID, usID, actDate, loc, attended, realAlert, comments);
+    set msg = 'Alerta registrada';
+    select msg as sstatus;
+end//
+delimiter ;
+
+drop procedure if exists sp_checkAlert;
+delimiter //
+create procedure sp_checkAlert(in usID int)
+begin
+	declare exist int;
+    declare msg nvarchar(60);
+    set exist = (select count(*) from Alerts where AlertUserID = usID);
+    if(exist =0) then
+		set msg = 'No tiene alertas';
+    else
+		select AlertDate as fecha, AlertLocation as lugar, AlertAttended as atendieron, AlertReal as fueReal, alertComments as comentarios from Alerts;
+		set msg = 'Alertas encontradas';
+    end if;
+    select msg as sstatus;
+end//
+delimiter;
+
+drop procedure if exists sp_registerAdmin;
+delimiter //
+create procedure sp_registerAdmin(in pass nvarchar(32))
+begin
+	declare actID int;
+    declare actDate date;
+    declare msg nvarchar(60);
+    set actID = (select count(*) from Administradores)+1;
+    set actDate = curdate();
+    insert into Administradores(AdminID, AdminRegisterDate, AdminPass) values (actID, actDate, pass);
+end//
+delimiter ;
+
+drop procedure if exists sp_registerMonitor;
+delimiter //
+create procedure sp_registerMonitor(in firstLN nvarchar(32), in secondLN nvarchar(32), in namess nvarchar(64), in tel int(12), in email nvarchar(64), in deleg nvarchar(40), in turn nvarchar(16), in pass nvarchar(32), in dir nvarchar(160))
+begin 
+	declare actID int;
+    declare actDate date;
+	declare msg nvarchar(30);
+    set actID = (select count(*) from Monitor)+1;
+    set actDate = curdate();
+    insert into Monitor (MonitorID, MonitorRegisterDate, MonitorFirstLastName, MonitorSecondLastName, MonitorTelephone, MonitorEmail, MonitorDel, MonitorTurn, MonitorPass, MonitorDir)
+    values (actID, actDate, firstLN, secondLN, namess, tel, email, deleg, turn, pass, dir);
+end//
+delimiter ;
+drop procedure if exists sp_checkMonitor;
+delimiter //
+create procedure sp_checkMonitor(in id int)
+begin
+	declare exist int;
+    declare msg nvarchar(30);
+    set exist = (select count(*) from Monitor where MonitorID = id);
+    if(exist = 0) then
+		set msg = 'El monitor no existe';
+    else
+		select MonitorFirstLastName as apellidoPat, MonitorSecondLastName as apellidoMat, MonitorRealName as nombreComp, MonitorEmail as email, MonitorDel as delegacion, MonitorTurn as turno from Monitor;
+        set msg = 'El monitor fue encontrado';
+    end if;
+    select msg as sstatus;
+end//
+delimiter ;
+
+drop procedure if exists sp_monitoringOn;
+delimiter //
+create procedure sp_monitoringOn(in monitorId int, in hours int)
+begin
+	declare actId int;
+    declare actDate date;
+    set actId = (select count(*) from Monitoring);
+    set actDate = curdate();
+    insert into Monitoring(MonID, MonMonitorID, MonStartDate, MonHours) values (actId, monitorId, actDate, hours);
+end//
+delimiter ;
+
+drop procedure if exists sp_checkMonitoring;
+delimiter //
+create procedure sp_checkMonitoring(in monitorID int)
+begin
+	declare msg nvarchar(60);
+	declare exist int;
+    set exist = (select count(*) from Monitoring where MonMonitorID = monitorID);
+    if (exist = 0) then
+		set msg = 'no hay horas registradas';
+    else
+		select Monitor.MonitorFirstLastName as apellidoPat, Monitor.MonitorSecondLastName as apellidoMat, Monitor.MonitorRealName as nombres, Monitor.MonitorEmail as email, Monitor.MonitorDel as delegacion, Monitor.MonitorTurn as turno,
+        Monitoring.MonStartDate as fecha, Monitoring.MonHours as Horas from Monitoring inner join Monitor on Monitoring.MonMonitorID = Monitor.MonitorID;
+        set msg = 'monitoreo encontrado';
+    end if;
+end//
+delimiter ;
+
+/*
+create table BlockedUsers(
+	BlockedUserID int not null primary key,
+    BlockedUserUserID int not null,
+    BlockedUserDate date not null,
+    BlockedUserReason nvarchar(160) not null,
+    FOREIGN KEY (BlockedUserUserID) REFERENCES Users(UserID)
+);
+
+create table ProductUse(
+	ProductUseID int not null primary key,
+    ProductUseProductID int not null,
+    ProductUseStartDate date not null,
+    ProductUseEndDate date not null,
+    FOREIGN KEY (ProductUseProductID) REFERENCES Products(ProductID)
+);
+select * from Users;
+select * from Products;
+select * from ProductsSale;
+select * from Alerts;
+select * from Administradores;
+select * from Monitor;
+select * from Monitoring;
+select * from Modifications;
+select * from BlockedUsers;
+select * from ProductUse;
+*/
