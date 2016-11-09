@@ -325,15 +325,61 @@ begin
 end//
 delimiter ;
 
-/*
-create table BlockedUsers(
-	BlockedUserID int not null primary key,
-    BlockedUserUserID int not null,
-    BlockedUserDate date not null,
-    BlockedUserReason nvarchar(160) not null,
-    FOREIGN KEY (BlockedUserUserID) REFERENCES Users(UserID)
-);
+drop procedure if exists sp_blockUser;
+delimiter //
+create procedure sp_blockUser(in userID int, in reason nvarchar(160))
+begin
+	declare actID int;
+	declare actDate nvarchar(60);
+    declare msg nvarchar(30);
+    declare exist int;
+    set actId = (select count(*) from BlockedUsers)+1;
+    set actDate = curdate();
+    set exist = (select count(*) from Users where UserID = userID);
+    if (exist = 0) then
+		set msg = 'usuario inexistente';
+    else
+		insert into BlockedUsers (BlockedUserID, BlockedUserUserID, BlockedUserDate, BlockedUserReason) values (actID, userID, actDate, reason);
+        set msg = 'usuario bloqueado!!';
+    end if;
+    select msg as sstatus;
+end//
+delimiter ;
 
+drop procedure if exists sp_checkBlockedUser;
+delimiter //
+create procedure sp_checkBlockedUser(in userID int)
+begin
+	declare exist int;
+    declare msg nvarchar(60);
+    set exist = (select count(*) from BlockedUsers where BlockedUserUserID = userID);
+    if (exist=0) then
+		set msg = 'bloqueo no encontrado';
+	else
+		select Users.UserID as idUsuario, Users.UserFirstLastName as apellidoPat, Users.UserSecondLastName as apellidoMat, Users.UserRealName as namee, BlockedUsers.BlockedUserDate as fechaBloqueo, BlockedUsers.BlockedUserReason as razon from BlockedUsers inner join Users on BlockedUsers.BlockedUserUserID = Users.UserID;
+		set msg = 'bloqueo encontrado';
+	end if;
+    select msg as sstatus;
+end//
+/*Faltan modificaciones de Monitor o Usuario, que registre cuando se usa un producto y talvez un Trigger que bloquee los usuarios con 3 faltas y maybe una tabla con las faltas que ha cometido el usuario (por ejemplo alertas fake o cosas asi)*/
+/*
+create table Modifications(
+	ModID int not null primary key,
+    ModMonitor boolean not null,
+    ModUserID int not null,
+    ModDate date not null,
+    ModLastTelephone int (12) not null,
+    ModNewTelephone int (12) not null,
+    ModLastEmail nvarchar(64) not null,
+    ModNewEmail nvarchar(64) not null,
+    ModLastDel nvarchar (40) not null,
+    ModNewDel nvarchar(40) not null,
+    ModLastDir nvarchar(160) not null,
+    ModNewDir nvarchar(160) not null,
+    ModLastPass nvarchar(32) not null,
+    ModNewPass nvarchar(32) not null,
+    FOREIGN KEY (ModUserID) REFERENCES Users(UserID)
+);
 create table ProductUse(
 	ProductUseID int not null primary key,
     ProductUseProductID int not null,
