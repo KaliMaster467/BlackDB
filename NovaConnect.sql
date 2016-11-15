@@ -69,11 +69,10 @@ create table Monitor(
 
 create table Modifications(
 	ModID int not null primary key,
-    ModMonitor boolean not null,
     ModUserID int not null,
     ModDate date not null,
-    ModLastTelephone int (12) not null,
-    ModNewTelephone int (12) not null,
+    ModLastTelephone nvarchar (20) not null,
+    ModNewTelephone nvarchar (20) not null,
     ModLastEmail nvarchar(64) not null,
     ModNewEmail nvarchar(64) not null,
     ModLastDel nvarchar (40) not null,
@@ -361,11 +360,52 @@ begin
 	end if;
     select msg as sstatus;
 end//
-/*Faltan modificaciones de Monitor o Usuario, que registre cuando se usa un producto y talvez un Trigger que bloquee los usuarios con 3 faltas y maybe una tabla con las faltas que ha cometido el usuario (por ejemplo alertas fake o cosas asi)*/
+
+drop procedure if exists sp_modUser;
+delimiter //
+create procedure sp_modUser(in userID int, in newTel nvarchar(20), in newEmail nvarchar(64), in newDel nvarchar(40), in newDir nvarchar(160), in newPass nvarchar(32))
+begin
+	declare exist int;
+    declare actID int;
+    declare actDate date;
+    declare lTel nvarchar(20);
+    declare lEmail nvarchar(64);
+    declare lDel nvarchar(40);
+    declare lDir nvarchar(160);
+    declare lPass nvarchar(32);
+    declare msg nvarchar(30);
+    set actID = (select count(*) from Modifications)+1;
+    set lTel = (select UserTelephone from Users where UserID = userID);
+    set lEmail = (select UserTelephone from Users where UserID = userID);
+    set lDel = (select UserDel from Users where UserID = userID);
+    set lDir = (select UserDir from Users where UserID = userID);
+    set lPass = (select UserPass from Users where UserID = userID);
+    set exist = (select count(*) from Users where UserID = userID);
+    if(exist = 0 ) then
+		set msg = 'usuario no encontrado';
+    else
+		insert into Modifications(ModID, ModUserID, ModDate, ModLastTelephone, ModNewTelephone, ModLastEmail, ModNewEmail, ModLastDel, ModNewDel, ModLastDir, ModNewDir, ModLastPass, ModNewPass) 
+        values (actID, userID, actDate, lTel, newTel, lEmail, newEmail, lDel, newDel, lDir, newDir, lPass, newPass);
+        update Users set UserTelephone = newTel, UserEmail = newEmail, UserDel = newDel, UserDir = newDir, UserPass = newPass where UserID = userID;
+		set msg = 'usuario modificado';
+    end if;
+    select msg as sstatus;
+end//
+delimiter ;
+
+drop trigger if exists tr_block;
+delimiter //
+create trigger tr_block after INSERT ON Alerts for each row begin
+	declare faltas int;
+    set faltas = (select count(*) from Alerts where AlertUserID = NEW.AlertUserID );
+	if (faltas = 3) then
+		update Users set UserActive = false;
+        call sp_blockUser(NEW.AlertUserID, 'Consiguio mas de 3 faltas');
+	end if;
+end//
 /*
 create table Modifications(
 	ModID int not null primary key,
-    ModMonitor boolean not null,
     ModUserID int not null,
     ModDate date not null,
     ModLastTelephone int (12) not null,
