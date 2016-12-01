@@ -1,0 +1,306 @@
+-- Database: NovaConnect
+
+-- DROP DATABASE "NovaConnect";
+
+CREATE DATABASE "NovaConnect"
+    WITH 
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'Spanish_Spain.1252'
+    LC_CTYPE = 'Spanish_Spain.1252'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
+    
+    CREATE TABLE Users(
+    	UserID int primary key NOT NULL,
+        UserRegisterDate date NOT NULL,
+        UserFirstLastName text(32) NOT NULL,
+        UserSecondLastName text(32) NOT NULL,
+        UserRealName text(64) NOT NULL,
+        UserTelephone text(20) NOT NULL,
+        UserEmail text(64) NOT NULL,
+        UserDel text(40) NOT NULL,
+        UserPass text(32) NOT NULL,
+        UserDir text(160) NOT NULL,
+        UserActive boolean NOT NULL
+    )
+    
+    CREATE TABLE Products(
+    	ProductID int primary key NOT NULL,
+        ProductRegisterDate date NOT NULL,
+        ProductName text(32) NOT NULL,
+        ProductPrice int(10) NOT NULL,
+        ProductExistence int(5) NOT NULL,
+        ProductDescription text(250)
+    )
+    
+    CREATE TABLE ProductsSale(
+    	SaleID int primary key NOT NULL,
+        SaleUserID int NOT NULL REFERENCES Users(UserID),
+        SaleProductID int NOT NULL REFERENCES Products(ProductID),
+        SaleDate date NOT NULL,
+        SalePayMethod int(2) NOT NULL,
+        SaleComments text(200)
+    )
+    
+    CREATE TABLE Alerts(
+    	AlertID int primary key NOT NULL,
+        AlertUserID int NOT NULL REFERENCES Users(UserID),
+        AlertDate date NOT NULL,
+        AlertLocation text(160) NOT NULL,
+        AlertAttended boolean NOT NULL,
+        AlertReal boolean NOT NULL,
+        AlertComments text(200)
+    )
+    
+    CREATE TABLE Administradores(
+    	AdminID int primary key NOT NULL,
+        AdminRegisterDate date NOT NULL,
+        AdminPass text(32) NOT NULL
+    )
+    
+    CREATE TABLE Monitor(
+    	MonitorID int primary key NOT NULL,
+        MonitorRegisterDate date NOT NULL,
+        MonitorFirstLastName text(32) NOT NULL,
+        MonitorSecondLastName text(32) NOT NULL,
+        MonitorRealName text(64) NOT NULL,
+        MonitorTelephone int(12) NOT NULL,
+        MonitorEmail text(64) NOT NULL,
+        MonitorDel text(40) NOT NULL,
+        MonitorTurn text(16) NOT NULL,
+        MonitorPass text(32) NOT NULL,
+        MonitorDir text(160) NOT NULL
+    )
+    
+    CREATE TABLE Modifications(
+    	ModID int primary key NOT NULL,
+        ModUserID int NOT NULL REFERENCES Users(UserID),
+        ModDate date NOT NULL,
+        ModLastTelephone text(20) NOT NULL,
+        ModNewTelephone text(20) NOT NULL,
+        ModLastEmail text(64) NOT NULL,
+        ModNewEmail text(64) NOT NULL,
+        ModLastDel text(40) NOT NULL,
+        ModNewDel text(40) NOT NULL,
+        ModLastDir text(160) NOT NULL,
+        ModNewDir text(160) NOT NULL,
+        ModLastPass text(32) NOT NULL,
+        ModNewPass text(32) NOT NULL
+    )
+    
+    CREATE TABLE Monitoring(
+    	MonID int primary key NOT NULL,
+        MonMonitorID int NOT NULL REFERENCES Monitor(MonitorID),
+        MonStartDate date NOT NULL,
+        MonHours int(2) NOT NULL
+    )
+    
+    CREATE TABLE BlockedUsers(
+    	BlockedUserID int primary key NOT NULL,
+        BlockedUserUserID int NOT NULL REFERENCES Users(UserID),
+        BlockedUserDate date NOT NULL,
+        BlockedUserReason text(160) NOT NULL
+    )
+    
+    CREATE TABLE ProductUse(
+    	ProductUseID int primary key NOT NULL,
+        ProductUseProductID int NOT NULL REFERENCES Products(ProductID),
+        ProductUseStartDate date NOT NULL,
+        ProductUseEndDate date NOT NULL
+    )
+    
+    CREATE FUNCTION sp_registerUser(IN firstLName text(32), in secondLName text(32), in namee text(64),
+                                    in tel text(20), in email text(64), in del text(40), in pas text(32), in dir text(160))
+    RETURNS integer AS $created$
+    declare
+    	actID integer;
+        existe integer;
+        actDate date;
+    BEGIN
+    	SELECT CURRENT_DATE into actDate;
+       	SELECT count(*) + 1 into actID FROM Users;
+        SELECT count(*) into existe FROM Users WHERE UserEmail = email;
+        IF existe = 1 THEN
+        	INSERT INTO Users(UserID, UserRegisterDate, UserFirstLastName, UserSecondLastName, UserRealName, UserTelephone, UserEmail, UserDel, UserPass, UserDir, UserActive)
+			VALUES(actID, actDate, firstLName, secondLName, namee, tel, email, del, pas, dir, false); 
+    	END IF;
+        RETURN existe;
+    END;
+    /**
+    	testDB=# select sp_registerUser('ochoa', 'rodriguez', 'daniel salvador', '55555', 'email', 'del', 'pass', 'dir'
+    */
+    
+    CREATE FUNCTION sp_checkUser(in email text(64))
+    RETURNS integer AS $Found$
+    declare
+    	existe integer;
+    BEGIN
+    	SELECT count(*) INTO existe FROM Users WHERE UserEmail = email;
+    	IF existe=1 THEN
+        	SELECT UserFirstLastName AS LastNameFirst, UserSecondLastName AS LastNameSecond, UserRealName AS UserName, 
+        	UserTelephone AS Tel, UserEmail AS email, UserDel AS delegation FROM Users WHERE UserEmail = email;
+    	END IF;
+        RETURN existe;
+    END;
+    /**
+    	testDB=# select sp_checkUser('Email');
+    */
+    
+    CREATE FUNCTION sp_registerProduct(in namee text(32), in price int(10), in existence int (5), in description text(250))
+    RETURNS integer as $inserted$
+    declare
+    	actID integer;
+        actDate date;
+        existe integer;
+    BEGIN
+    	SELECT count(*) + 1 into actID from Products;
+        SELECT CURRENT_DATE into actDate;
+        SELECT count(*) into existe FROM Products WHERE ProductName = namee;
+        IF existe=1 THEN
+        	INSERT INTO Products(ProductID, ProductRegisterDate, ProductName, ProductPrice, ProductExistence, ProductDescription)
+        	VALUES (actID, actDate, namee, price, existence, description);
+    	END IF;
+        RETURN existe;
+    END;
+    /**
+    	testDB=# select sp_registerProduct('Pulse-Sync', '500', '5', 'la mejor pulsera ever')
+    */
+    
+    CREATE FUNCTION sp_checkProducts(in idP int)
+    RETURNS integer as $Existe$
+    declare 
+    	existe integer;
+    BEGIN
+    	SELECT count(*) into existe From Products WHERE ProductID = idP;
+        if existe = 1 THEN
+        	SELECT ProductName as nameOfProduct, ProductPrice as price, ProductExistence as currentExistence, ProductDescription as description from Products where ProductID = idP;
+		END IF;
+        RETURN existe;
+    END;
+    /**
+    	testDB=# select sp_checkProducts(1);
+    */
+    
+    CREATE FUNCTION sp_productSale(in idU int, in prodId int, in payMethod int(2), in commentss text(200))
+    RETURNS integer as $Done$
+    declare 
+    	actID integer;
+        actDate date;
+    BEGIN
+    	SELECT count(*) +1 INTO actID FROM ProductsSale;
+        SELECT CURRENT_DATE INTO actDate;
+    	INSERT INTO ProductsSale(SaleID, SaleUserID, SaleProductID, SaleDate, SalePayMethod, SaleComments) 
+    	VALUES (actID, idU, prodID, actDate, payMethod, commentss);
+        RETURN 1;
+    END;
+    /**
+    	testDB=# select sp_productSale(5, 5, 3, 'la mejor venta en la bida');
+    */
+    
+    CREATE FUNCTION sp_checkSale(in usID int, in prodID int)
+    RETURNS integer as $checked$
+    declare 
+    	existe integer;
+    BEGIN
+    	SELECT count(*) INTO existe FROM ProductsSale WHERE SaleUserID = usID;
+        IF existe = 1 THEN
+        	SELECT Products.ProductName as nombreProducto, Products.ProductPrice as precio, Products.ProductDescription as descripcion, ProductsSale.SaleDate as fechaDeCompra, ProductsSale.SalePayMethod as formaDePago, ProductsSale.SaleComments as comentarios from ProductsSale inner join Products on ProductsSale.SaleProductID = Products.ProductID;
+		END IF;
+        RETURN existe;
+    END;
+    /**
+    	testDB=# select sp_checkSale(4, 2);
+    */
+    
+    CREATE FUNCTION sp_fireAlert(in usID int, in loc text(160), in attended boolean, in realAlert boolean, in comments text(200))
+    RETURNS integer as $fired$
+    declare 
+    	alertID integer;
+        actDate date;
+    BEGIN
+    	SELECT count(*) +1 INTO alertID from Alerts;
+        SELECT CURRENT_DATE INTO actDate;
+        INSERT INTO Alerts(AlertID, AlertUserID, AlertDate, AlertLocation, AlertAttended, AlertReal, AlertComments) 
+        VALUES (alertID, usID, actDate, loc, attended, realAlert, comments);
+		RETURN 1;
+    END;
+    /**
+    	testDB=# select sp_fireAlert(4,'wololo', true, true, 'yesmen');
+    */
+    
+    CREATE FUNCTION sp_checkAlert(in usID int)
+    RETURNS integer as $existe$
+    declare existe integer;
+    BEGIN
+    	SELECT count(*) INTO existe from Alerts where AlertUserID = usID;
+        IF existe = 1 THEN
+        	SELECT AlertDate as fecha, AlertLocation as lugar, AlertAttended as atendieron, AlertReal as fueReal, alertComments as comentarios from Alerts;
+		END IF;
+    	RETURN existe;
+    END;
+    /*
+    	testDB=# SELECT sp_checkAlert(5);
+    */
+    
+    CREATE FUNCTION sp_registerAdmin(in pass text(32))
+    RETURNS integer as $done$
+    declare
+    	actID integer;
+    	actDate date;
+    BEGIN
+    	SELECT count(*) +1 INTO actID FROM Administradores;
+        SELECT CURRENT_DATE INTO actDate;
+        INSERT INTO Administradores(AdminID, AdminRegisterDate, AdminPass)
+        VALUES (actID, actDate, pass);
+		RETURN 1;
+    END;
+    /*
+    	testDB=# SELECT sp_registerAdmin('chaos');
+    */
+    
+    CREATE FUNCTION sp_registerMonitor(in firstLN text(32), in secondLN text(32), in namess text(64), in tel int(12), in email text(64), in deleg text(40), in turn text(16), in pass text(32), in dir text(160))
+    RETURNS integer as $done$
+    declare
+    	actID integer;
+    	actDate date;
+    BEGIN
+    	SELECT count(*) +1 INTO actID FROM Administradores;
+        SELECT CURRENT_DATE INTO actDate;
+    	INSERT INTO Monitor (MonitorID, MonitorRegisterDate, MonitorFirstLastName, MonitorSecondLastName, MonitorTelephone, MonitorEmail, MonitorDel, MonitorTurn, MonitorPass, MonitorDir)
+		VALUES (actID, actDate, firstLN, secondLN, namess, tel, email, deleg, turn, pass, dir);
+        RETURN 1;
+    END; 
+    /*
+    
+    */
+    
+	CREATE FUNCTION sp_checkMonitor(in idM int)
+    RETURN integer as $done$
+    declare
+    	existe integer;
+    BEGIN
+    	SELECT count(*) into existe FROM Monitor WHERE MonitorID = idM;
+        IF existe = 1 THEN
+        	SELECT MonitorFirstLastName as apellidoPat, MonitorSecondLastName as apellidoMat, MonitorRealName as nombreComp, MonitorEmail as email, MonitorDel as delegacion, MonitorTurn as turno from Monitor;
+		END IF;
+        RETURN existe;
+    END;
+    /*
+    
+    */
+    
+    CREATE FUNCTION sp_monitoringON( in monitorID int, in hours int)
+    RETURN integer as $registered$
+    declare 
+    	actID integer;
+        actDate date;
+    BEGIN
+    	SELECT count(*) +1 INTO actID FROM Administradores;
+        SELECT CURRENT_DATE INTO actDate;
+        INSERT INTO Monitoring(MonID, MonMonitorID, MonStartDate, MonHours) 
+        VALUES (actId, monitorId, actDate, hours);
+    END;
+    /*
+    
+    */
