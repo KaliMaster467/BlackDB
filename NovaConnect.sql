@@ -197,7 +197,7 @@ begin
     set actID = (select count(*) from ProductsSale)+1;
     set actDate = curDate();
     insert into ProductsSale(SaleID, SaleUserID, SaleProductID, SaleDate, SalePayMethod, SaleComments) 
-    values (id, prodId, prodID, actDate, payMethod, comments);
+    values (actID, id, prodID, actDate, payMethod, comments);
     set msg = 'Gotcha';
     select msg as sstatus;
 end//
