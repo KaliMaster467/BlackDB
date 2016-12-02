@@ -276,7 +276,7 @@ CREATE DATABASE "NovaConnect"
     */
     
 	CREATE FUNCTION sp_checkMonitor(in idM int)
-    RETURN integer as $done$
+    RETURNS integer as $done$
     declare
     	existe integer;
     BEGIN
@@ -291,7 +291,7 @@ CREATE DATABASE "NovaConnect"
     */
     
     CREATE FUNCTION sp_monitoringON( in monitorID int, in hours int)
-    RETURN integer as $registered$
+    RETURNS integer as $registered$
     declare 
     	actID integer;
         actDate date;
@@ -300,7 +300,82 @@ CREATE DATABASE "NovaConnect"
         SELECT CURRENT_DATE INTO actDate;
         INSERT INTO Monitoring(MonID, MonMonitorID, MonStartDate, MonHours) 
         VALUES (actId, monitorId, actDate, hours);
+	RETURN 1;
     END;
     /*
     
+    */
+
+    CREATE FUNCTION sp_checkMonitoring(in monitorID int)
+    RETURNS integer as $monitorOk$
+    declare
+	exis integer;
+    BEGIN
+    	SELECT count(*) into exis from Monitoring where MonMonitorID = monitorID;
+	IF exis = 1 THEN
+	     select Monitor.MonitorFirstLastName as apellidoPat, Monitor.MonitorSecondLastName as apellidoMat, Monitor.MonitorRealName as nombres, Monitor.MonitorEmail as email, Monitor.MonitorDel as delegacion, Monitor.MonitorTurn as turno,         Monitoring.MonStartDate as fecha, Monitoring.MonHours as Horas from Monitoring inner join Monitor on Monitoring.MonMonitorID = Monitor.MonitorID;
+	END IF;
+	RETURN exis;
+    END;
+    /*
+
+    */
+
+    CREATE FUNCTION sp_blockUser(in userID int, in reason text(160))
+    RETURNS integer as $blocked$
+    declare 
+	actID integer; 
+	actDate date;
+    	exis integer;
+    BEGIN
+	SELECT count(*) +1 into actID from BlockedUsers;
+	SELECT CURRENT_DATE into actDate;
+	SELECT count(*) INTO exis FROM Users where UserID = userID;
+	IF exis = 1 THEN
+	     insert into BlockedUsers (BlockedUserID, BlockedUserUserID, BlockedUserDate, BlockedUserReason) values (actID, userID, actDate, reason);
+	END IF;
+	RETURN exis;
+    END;
+
+    CREATE FUNCTION sp_checkBlockedUser(in userID int)
+    RETURNS integer as $encontrado$
+    declare exis integer;
+    BEGIN
+	SELECT count(*) INTO exis FROM BlockedUsers WHERE BlockedUserUserID = userID;
+	IF exis = 1 THEN
+	    select Users.UserID as idUsuario, Users.UserFirstLastName as apellidoPat, Users.UserSecondLastName as apellidoMat, Users.UserRealName as namee, BlockedUsers.BlockedUserDate as fechaBloqueo, BlockedUsers.BlockedUserReason as razon from BlockedUsers inner join Users on BlockedUsers.BlockedUserUserID = Users.UserID;
+	END IF;
+        RETURN exis;
+    END;
+    /*
+    	
+    */
+
+    CREATE FUNCTION sp_modUser(in userID int, in newTel text(20), in newEmail text(64), in newDel text(40), in newDir text(160), in newPass text(32))
+    RETURNS integer as $modificado$
+    declare
+	exis integer;
+	actID integer;
+	actDate date;
+	lTel text(20);
+	lEmail text(64);
+	lDel text(40);
+	lDir text(160);
+	lPass text(32);
+	SELECT count(*) +1 INTO actID FROM Modifications;
+	SELECT UserTelephone INTO lTel FROM Users WHERE UserID = userID;
+	SELECT UserEmail INTO lEmail FROM Users WHERE UserID = userID;
+	SELECT UserDel INTO lDel FROM Users WHERE UserID = userID;
+	SELECT UserDir INTO lDir FROM Users WHERE UserID = userID;
+	SELECT UserPass INTO lPass FROM Users WHERE UserID = userID;
+	SELECT count(*) INTO exis FROM Users WHERE UserID = userID;
+	IF exis = 1 THEN
+	    insert into Modifications(ModID, ModUserID, ModDate, ModLastTelephone, ModNewTelephone, ModLastEmail, ModNewEmail, ModLastDel, ModNewDel, ModLastDir, ModNewDir, ModLastPass, ModNewPass) 
+            values (actID, userID, actDate, lTel, newTel, lEmail, newEmail, lDel, newDel, lDir, newDir, lPass, newPass);
+	    update Users set UserTelephone = newTel, UserEmail = newEmail, UserDel = newDel, UserDir = newDir, UserPass = newPass where UserID = userID;
+    	END IF;
+	RETURN exis;
+    END;
+    /*
+   	
     */
