@@ -329,7 +329,7 @@ delimiter //
 create procedure sp_blockUser(in userID int, in reason nvarchar(160))
 begin
 	declare actID int;
-	declare actDate nvarchar(60);
+	declare actDate date;
     declare msg nvarchar(30);
     declare exist int;
     set actId = (select count(*) from BlockedUsers)+1;
