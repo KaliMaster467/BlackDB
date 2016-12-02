@@ -376,7 +376,7 @@ begin
     declare msg nvarchar(30);
     set actID = (select count(*) from Modifications)+1;
     set lTel = (select UserTelephone from Users where UserID = userID);
-    set lEmail = (select UserTelephone from Users where UserID = userID);
+    set lEmail = (select UserEmail from Users where UserID = userID);
     set lDel = (select UserDel from Users where UserID = userID);
     set lDir = (select UserDir from Users where UserID = userID);
     set lPass = (select UserPass from Users where UserID = userID);
