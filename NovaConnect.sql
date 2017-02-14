@@ -107,6 +107,80 @@ create table ProductUse(
     FOREIGN KEY (ProductUseProductID) REFERENCES Products(ProductID)
 );
 
+create table friends(
+	UserFriendsID int not null primary key,
+	User1 int not null,
+	User2 int not null,
+	FriendsSince date not null,
+	FriendRequest boolean,
+	FOREIGN KEY (User1) REFERENCES Users(UserID),
+	FOREIGN KEY (User2) REFERENCES Users(UserID)
+);
+
+create table msg(
+	MsgID int not null primary key,
+	sendUser int not null,
+	receiveUser int not null,
+	sentDate date not null,
+	message nvarchar,
+	FOREIGN KEY (sendUser) REFERENCES Users(UserID),
+	FOREIGN KEY (receiveUser) REFERENCES Users(UserID)
+);
+
+drop procedure if exists sp_addFriend;
+delimiter //
+create procedure sp_addFriend(in User1ID int, in User2ID int)
+begin
+	declare actID int;
+	declare actDate date;
+	declare existss int;
+	declare msg nvarchar(64);
+	set actID = (select count(*) from friends)+1;
+	set actDate = curDate();
+	set existss = select count(*) from friends where User1 = User1ID and User2 = User2ID;
+	if(existss = 0) then
+		insert into friends(UserFriendsID, User1, User2, FriendsSince, FriendRequest) values
+		(actID, User1ID, User2ID, actDate, false);
+		set msg = "Request Sent";
+	else
+		set msg = "User request already sent";
+	end if;
+	select msg as sstatus;
+end//
+delimiter;
+
+drop procedure if exists sp_addOrDeleteFriend;
+delimiter //
+create procedure sp_addOrDeleteFriend(in User1ID int, in User2ID int, in addOrDelete boolean)
+begin
+	declare curID int;
+	declare existss int;
+	declare msg nvarchar(64;
+	set existss = select count(*) from friends where User1 = User1ID and User2 = User2ID;
+	if(existss >0) then
+		update friends set FriendRequest = addOrDelete where User1 = User1ID and User2 = User2ID;
+		set msg = "Op done";
+	else
+		set msg = "Friend not in list";
+	end if;
+	select msg as sstatus;
+end//
+delimiter;
+			     
+drop procedure if exists sp_sendMessage;
+delimiter //
+create procedure sp_sendMessage(in SendID int, in receptorID int, in nvarchar message)
+begin
+	declare actID int;
+	declare actDate date;
+	set actID = (select count(*) from msg) +1;
+	set actDate = curDate();
+	insert into msg (MsgID, sendUser, receiveUser, sentDate, message) values
+	(actID, SendID, receptorID, actDate, message);
+	select "Message sent" as sstatus;
+end//
+delimiter;			     
+	
 drop procedure if exists sp_registerUser;
 delimiter //
 create procedure sp_registerUser(in firstLName nvarchar(32), in secondLName nvarchar(32), in namee nvarchar(64),
